@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "Build",
+            "command": "make -j",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build",
+        },
+        {
+            "type": "shell",
+            "label": "Flash",
+            "command": "make -j;make flash",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build",
+        },
+        {
+            "type": "shell",
+            "label": "Reset",
+            "command": "make reset",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build",
+        },
+    ]
+}
