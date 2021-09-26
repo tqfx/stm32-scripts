@@ -3,7 +3,7 @@
     "configurations": [
         {
             "cwd": "${workspaceRoot}",
-            "executable": "./build/ELFNAME.elf",
+            "executable": "build/ELFNAME.elf",
             "name": "Debug",
             "request": "launch",
             "type": "cortex-debug",
