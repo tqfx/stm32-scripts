@@ -62,10 +62,10 @@ dst = dealdir(dst)
 
 config = default_config
 # Get the configuration file for the directory where the execution file resides
-for path in (cwd, dealdir(os.path.relpath(pwd + "..")), pwd):
+for path in (cwd, pwd + "../", pwd):
     cfgs = glob.glob(r"{}*.cfg".format(path))
     if [] != cfgs:
-        config = cfgs[0].replace("\\", "/")
+        config = os.path.relpath(cfgs[0]).replace("\\", "/")
         break
     del cfgs
     if path == pwd:
@@ -186,9 +186,9 @@ def makefile(filename="Makefile"):
         default_txt = ''
         for flag in flags:
             default_txt += "CFLAGS += {}\n".format(flag)
-        default_txt += "C_INCLUDES += -I .\n"
+        default_txt += "C_INCLUDES += -I.\n"
         default_txt += "C_SOURCES += $(wildcard *.c)\n"
-        default_txt += "LDFLAGS += -u _printf_float\n"
+        default_txt += "LDFLAGS += -u_printf_float\n"
         with open(default_makefile, "wb") as f:
             f.write(default_txt.encode("utf-8"))
 
@@ -220,13 +220,8 @@ def vscinit():
     initialze .vscode
     '''
 
-    try:
+    if not os.path.exists(dst):
         os.mkdir(dst)
-    except FileExistsError:
-        pass
-    except Exception as e:
-        print(e)
-        exit()
 
     return
 
