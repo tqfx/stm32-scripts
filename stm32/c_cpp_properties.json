@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "ARM",
+            "name": "arm",
             "includePath": [
                 "${workspaceFolder}/**"
             ],
