@@ -15,7 +15,7 @@ default_elfname = "ELFNAME"
 # Default .cfg filename
 default_config = "openocd.cfg"
 # Default user' Makefile
-default_makefile = "Makefile_user.txt"
+default_mk = "make.mk"
 # Target configuration directory
 dst = ".vscode"
 
@@ -76,13 +76,13 @@ elfname = ''
 iocs = glob.glob(r"{}*.ioc".format(cwd))
 if [] != iocs:
     f = open(iocs[0], "r", encoding="utf-8")
-    txts = f.read().split("\n")
+    texts = f.read().split("\n")
     f.close()
-    for txt in txts:
-        if "ProjectName" in txt:
-            elfname = txt.split("=")[-1]
+    for text in texts:
+        if "ProjectName" in text:
+            elfname = text.split("=")[-1]
             break
-    del txts
+    del texts
 else:
     print("unfound", "*.ioc")
 del iocs
@@ -94,15 +94,15 @@ def launch(filename="launch.json"):
     '''
 
     with open(pwd + vsc + filename, "r", encoding="utf-8") as f:
-        txt = f.read()
+        text = f.read()
 
     # Set .elf name
-    txt = txt.replace(default_elfname, elfname)
+    text = text.replace(default_elfname, elfname)
     # Set .cfg name
-    txt = txt.replace(default_config, config)
+    text = text.replace(default_config, config)
 
     with open(cwd + dst + filename, "wb") as f:
-        f.write(txt.encode("utf-8"))
+        f.write(text.encode("utf-8"))
 
     return
 
@@ -113,10 +113,10 @@ def tasks(filename="tasks.json"):
     '''
 
     with open(pwd + vsc + filename, "r", encoding="utf-8") as f:
-        txt = f.read()
+        text = f.read()
 
     with open(cwd + dst + filename, "wb") as f:
-        f.write(txt.encode("utf-8"))
+        f.write(text.encode("utf-8"))
 
     return
 
@@ -127,12 +127,12 @@ def c_cpp_properties(filename="c_cpp_properties.json"):
     '''
 
     with open(pwd + vsc + filename, "r", encoding="utf-8") as f:
-        txt = f.read()
+        text = f.read()
 
     tools = findtool("arm-none-eabi-gcc")
     if [] != tools:
         tool = tools[0].replace("\\", "/")
-        txt = txt.replace("arm-none-eabi-gcc", tool)
+        text = text.replace("arm-none-eabi-gcc", tool)
         print("tool:", tool)
     else:
         print("unfound", "arm-none-eabi-gcc")
@@ -144,13 +144,13 @@ def c_cpp_properties(filename="c_cpp_properties.json"):
         print("start:", asm)
         mcu = os.path.splitext(asm)[0].split("_")[-1]
         mcu = mcu.upper().replace("X", "x")
-        txt = txt.replace(default_mcu, mcu)
+        text = text.replace(default_mcu, mcu)
     except IndexError:
         print("unfound", "startup*.s")
         exit()
 
     with open(cwd + dst + filename, "wb") as f:
-        f.write(txt.encode("utf-8"))
+        f.write(text.encode("utf-8"))
 
     return
 
@@ -182,35 +182,39 @@ def makefile(filename="Makefile"):
     )
     cmd += "reset:\n" + openocd + "reset -c shutdown\n"
 
-    if default_makefile not in os.listdir():
-        default_txt = ''
+    if default_mk not in os.listdir():
+        text_mk = '# compile gcc flags\n'
         for flag in flags:
-            default_txt += "CFLAGS += {}\n".format(flag)
-        default_txt += "C_INCLUDES += -I.\n"
-        default_txt += "C_SOURCES += $(wildcard *.c)\n"
-        default_txt += "LDFLAGS += -u_printf_float\n"
-        with open(default_makefile, "wb") as f:
-            f.write(default_txt.encode("utf-8"))
+            text_mk += "CFLAGS += {}\n".format(flag)
+        text_mk += "# C defines\nC_DEFS +=\n"
+        text_mk += "# C includes\nC_INCLUDES +=\n"
+        text_mk += "# C sources\nC_SOURCES += $(wildcard *.c)\n"
+        text_mk += "# AS defines\nAS_DEFS +=\n"
+        text_mk += "# ASM sources\nASM_SOURCES +=\n"
+        text_mk += "# link flags\nLDFLAGS += -u_printf_float\n"
+        with open(default_mk, "wb") as f:
+            f.write(text_mk.encode("utf-8"))
 
     with open(filename, "r", encoding="utf-8") as f:
-        txt = f.read()
+        text = f.read()
 
     # Set inlcude user' Makefile
-    if default_makefile not in txt:
-        txt_inc = "-include {}\n".format(default_makefile)
-        txt_tmp = "# default"
-        txt = txt.replace(txt_tmp, "{}\n{}".format(txt_inc, txt_tmp))
+    if default_mk not in text:
+        text_inc = "-include {}\n".format(default_mk)
+        text_src = "# default "
+        text = text.replace(text_src, "{}\n{}".format(text_inc, text_src))
+        del text_src
 
     # Deal with the end
     end = "EOF"
-    txts = txt.split(end)
-    txt = txts[0] + end
-    if " ***" in txts[-1]:
-        txt += " ***"
-    txt += "\n" + cmd
+    texts = text.split(end)
+    text = texts[0] + end
+    if " ***" in texts[-1]:
+        text += " ***"
+    text += "\n" + cmd
 
     with open(filename, "wb") as f:
-        f.write(txt.encode("utf-8"))
+        f.write(text.encode("utf-8"))
 
     return
 
