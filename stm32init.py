@@ -28,7 +28,7 @@ def findtool(tool):
     else:
         raise SystemError
     subp = subprocess.Popen(
-        [find, tool], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8"
+        [find, tool], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="UTF-8"
     )
     subp.wait()
     return subp.stdout.read().split()
@@ -75,7 +75,7 @@ elfname = ''
 # Get project name
 iocs = glob.glob(r"{}*.ioc".format(cwd))
 if [] != iocs:
-    f = open(iocs[0], "r", encoding="utf-8")
+    f = open(iocs[0], "r", encoding="UTF-8")
     texts = f.read().split("\n")
     f.close()
     for text in texts:
@@ -93,7 +93,7 @@ def launch(filename="launch.json"):
     Set launch.json
     '''
 
-    with open(pwd + vsc + filename, "r", encoding="utf-8") as f:
+    with open(pwd + vsc + filename, "r", encoding="UTF-8") as f:
         text = f.read()
 
     # Set .elf name
@@ -102,7 +102,7 @@ def launch(filename="launch.json"):
     text = text.replace(default_config, config)
 
     with open(cwd + dst + filename, "wb") as f:
-        f.write(text.encode("utf-8"))
+        f.write(text.encode("UTF-8"))
 
     return
 
@@ -112,11 +112,11 @@ def tasks(filename="tasks.json"):
     Set tasks.json
     '''
 
-    with open(pwd + vsc + filename, "r", encoding="utf-8") as f:
+    with open(pwd + vsc + filename, "r", encoding="UTF-8") as f:
         text = f.read()
 
     with open(cwd + dst + filename, "wb") as f:
-        f.write(text.encode("utf-8"))
+        f.write(text.encode("UTF-8"))
 
     return
 
@@ -126,7 +126,7 @@ def c_cpp_properties(filename="c_cpp_properties.json"):
     Set c_cpp_properties.json
     '''
 
-    with open(pwd + vsc + filename, "r", encoding="utf-8") as f:
+    with open(pwd + vsc + filename, "r", encoding="UTF-8") as f:
         text = f.read()
 
     tools = findtool("arm-none-eabi-gcc")
@@ -150,7 +150,7 @@ def c_cpp_properties(filename="c_cpp_properties.json"):
         exit()
 
     with open(cwd + dst + filename, "wb") as f:
-        f.write(text.encode("utf-8"))
+        f.write(text.encode("UTF-8"))
 
     return
 
@@ -165,8 +165,13 @@ def makefile(filename="Makefile"):
         "-Wpedantic",
         "-Wundef",
         "-Wunused",
-        "-Winline",
         "-Wshadow",
+        "-Winline",
+        "-Wpacked",
+        "-Wpadded",
+        "-Wcast-qual",
+        "-Wcast-align",
+        "-Wattributes",
         "-Wconversion",
         "-Wfloat-equal",
         "-Wswitch-enum",
@@ -193,9 +198,9 @@ def makefile(filename="Makefile"):
         text_mk += "# ASM sources\nASM_SOURCES +=\n"
         text_mk += "# link flags\nLDFLAGS += -u_printf_float\n"
         with open(default_mk, "wb") as f:
-            f.write(text_mk.encode("utf-8"))
+            f.write(text_mk.encode("UTF-8"))
 
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, "r", encoding="UTF-8") as f:
         text = f.read()
 
     # Set inlcude user' Makefile
@@ -214,7 +219,7 @@ def makefile(filename="Makefile"):
     text += "\n" + cmd
 
     with open(filename, "wb") as f:
-        f.write(text.encode("utf-8"))
+        f.write(text.encode("UTF-8"))
 
     return
 
