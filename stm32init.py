@@ -6,7 +6,7 @@ import glob
 import subprocess
 
 # Source configuration directory
-vsc = "stm32"
+vsc = "stm32init"
 
 # Default STM32 MCU
 default_mcu = "STM32MCU"
