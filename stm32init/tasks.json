@@ -4,7 +4,7 @@
         {
             "type": "shell",
             "label": "Build",
-            "command": "make -j",
+            "command": "make -j all",
             "problemMatcher": [
                 "$gcc"
             ],
@@ -13,7 +13,7 @@
         {
             "type": "shell",
             "label": "Flash",
-            "command": "make -j;make flash",
+            "command": "make -j all flash",
             "problemMatcher": [
                 "$gcc"
             ],

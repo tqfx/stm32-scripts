@@ -1,23 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os
-import sys
-import glob
-import subprocess
+import os, sys, glob, json, argparse, subprocess
 
+# Target configuration directory
+tgt = ".vscode"
 # Source configuration directory
 vsc = "stm32init"
 
-# Default STM32 MCU
-default_mcu = "STM32MCU"
-# Default .elf filename
-default_elfname = "ELFNAME"
-# Default .cfg filename
-default_config = "openocd.cfg"
-# Default user' Makefile
-default_mk = "make.mk"
-# Target configuration directory
-dst = ".vscode"
+parser = argparse.ArgumentParser()
+parser.add_argument("-W", action="append", nargs="*", default=[])
+parser.add_argument("--indent", type=int, default=4)
+args = parser.parse_known_args()
 
 
 def findtool(tool):
@@ -44,7 +37,7 @@ def dealdir(dirname):
         The path after being processed
     '''
 
-    if "/" != dirname[-1] and "\\" != dirname[-1]:
+    if dirname[-1] not in ("/", "\\"):
         dirname += "/"
     return dirname
 
@@ -58,34 +51,7 @@ pwd = os.path.split(os.path.relpath(sys.argv[0]))[0].replace("\\", "/")
 pwd = dealdir(pwd)
 cwd = dealdir(cwd)
 vsc = dealdir(vsc)
-dst = dealdir(dst)
-
-config = default_config
-# Get the configuration file for the directory where the execution file resides
-for path in (cwd, pwd + "../", pwd):
-    cfgs = glob.glob(r"{}*.cfg".format(path))
-    if [] != cfgs:
-        config = os.path.relpath(cfgs[0]).replace("\\", "/")
-        break
-    del cfgs
-    if path == pwd:
-        print("unfound", "*.cfg")
-
-elfname = ''
-# Get project name
-iocs = glob.glob(r"{}*.ioc".format(cwd))
-if [] != iocs:
-    f = open(iocs[0], "r", encoding="UTF-8")
-    texts = f.read().split("\n")
-    f.close()
-    for text in texts:
-        if "ProjectName" in text:
-            elfname = text.split("=")[-1]
-            break
-    del texts
-else:
-    print("unfound", "*.ioc")
-del iocs
+tgt = dealdir(tgt)
 
 
 def launch(filename="launch.json"):
@@ -94,17 +60,38 @@ def launch(filename="launch.json"):
     '''
 
     with open(pwd + vsc + filename, "r", encoding="UTF-8") as f:
-        text = f.read()
+        root = json.load(f)
+    prop = root["configurations"][0]
+    config = prop["configFiles"][0]
 
-    # Set .elf name
-    text = text.replace(default_elfname, elfname)
-    # Set .cfg name
-    text = text.replace(default_config, config)
+    # Get project name and set .elf name
+    iocs = glob.glob(r"{}*.ioc".format(cwd))
+    if iocs:
+        f = open(iocs[0], "r", encoding="UTF-8")
+        texts = f.read().split("\n")
+        f.close()
+        for text in texts:
+            if "ProjectName" in text:
+                prop["executable"] = "build/%s.elf" % text.split("=")[-1]
+                break
+    else:
+        sys.stderr.write("missing *.ioc\n")
 
-    with open(cwd + dst + filename, "wb") as f:
-        f.write(text.encode("UTF-8"))
+    # Get the configuration file for the directory where the execution file resides and set .cfg name
+    for path in (cwd, pwd + "../", pwd):
+        cfgs = glob.glob(r"{}*.cfg".format(path))
+        if cfgs:
+            config = os.path.relpath(cfgs[0]).replace("\\", "/")
+            sys.stdout.write("config: %s\n" % config)
+            break
+        if path == pwd:
+            sys.stderr.write("missing *.cfg\n")
 
-    return
+    prop["configFiles"] = [config]
+    with open(cwd + tgt + filename, "w", encoding="UTF-8") as f:
+        json.dump(root, f, ensure_ascii=True, indent=args[0].indent)
+
+    return config
 
 
 def tasks(filename="tasks.json"):
@@ -113,12 +100,10 @@ def tasks(filename="tasks.json"):
     '''
 
     with open(pwd + vsc + filename, "r", encoding="UTF-8") as f:
-        text = f.read()
+        root = json.load(f)
 
-    with open(cwd + dst + filename, "wb") as f:
-        f.write(text.encode("UTF-8"))
-
-    return
+    with open(cwd + tgt + filename, "w", encoding="UTF-8") as f:
+        json.dump(root, f, ensure_ascii=True, indent=args[0].indent)
 
 
 def c_cpp_properties(filename="c_cpp_properties.json"):
@@ -127,88 +112,60 @@ def c_cpp_properties(filename="c_cpp_properties.json"):
     '''
 
     with open(pwd + vsc + filename, "r", encoding="UTF-8") as f:
-        text = f.read()
+        root = json.load(f)
 
+    prop = root["configurations"][0]
     tools = findtool("arm-none-eabi-gcc")
     if [] != tools:
-        tool = tools[0].replace("\\", "/")
-        text = text.replace("arm-none-eabi-gcc", tool)
-        print("tool:", tool)
+        prop["compilerPath"] = tools[0].replace("\\", "/")
+        sys.stdout.write("tool: %s\n" % prop["compilerPath"])
     else:
-        print("unfound", "arm-none-eabi-gcc")
+        sys.stderr.write("missing arm-none-eabi-gcc\n")
 
     # Set STM32 MCU macro
     try:
         asms = glob.glob(r"{}startup*.s".format(cwd))
         asm = os.path.split(asms[0])[-1]
-        print("start:", asm)
+        sys.stdout.write("start: %s\n" % asm)
         mcu = os.path.splitext(asm)[0].split("_")[-1]
         mcu = mcu.upper().replace("X", "x")
-        text = text.replace(default_mcu, mcu)
+        prop["defines"] += [mcu]
     except IndexError:
-        print("unfound", "startup*.s")
-        exit()
+        sys.stderr.write("missing startup*.s\n")
 
-    with open(cwd + dst + filename, "wb") as f:
-        f.write(text.encode("UTF-8"))
-
-    return
+    with open(cwd + tgt + filename, "w", encoding="UTF-8") as f:
+        json.dump(root, f, ensure_ascii=True, indent=args[0].indent)
 
 
-def makefile(filename="Makefile"):
+def make(filename="Makefile", config="openocd.cfg", user="build.mk"):
     '''
     Set Makefile
     '''
 
-    flags = (
-        "-Wextra",
-        "-Wpedantic",
-        "-Wundef",
-        "-Wunused",
-        "-Wshadow",
-        "-Winline",
-        "-Wpacked",
-        "-Wpadded",
-        "-Wcast-qual",
-        "-Wcast-align",
-        "-Wattributes",
-        "-Wconversion",
-        "-Wfloat-equal",
-        "-Wswitch-enum",
-        "-Wswitch-default",
-        "-Wdouble-promotion",
-    )
-
     openocd = "\topenocd -f " + config + " -c init -c halt -c "
-    cmd = (
-        "flash:\n"
-        + openocd
-        + '"program $(BUILD_DIR)/$(TARGET).elf verify reset exit"\n'
-    )
+    cmd = "flash:\n" + openocd + '"program $(BUILD_DIR)/$(TARGET).elf verify reset exit"\n'
     cmd += "reset:\n" + openocd + "reset -c shutdown\n"
 
-    if default_mk not in os.listdir():
-        text_mk = '# compile gcc flags\n'
-        for flag in flags:
-            text_mk += "CFLAGS += {}\n".format(flag)
-        text_mk += "# C defines\nC_DEFS +=\n"
-        text_mk += "# C includes\nC_INCLUDES +=\n"
-        text_mk += "# C sources\nC_SOURCES += $(wildcard *.c)\n"
-        text_mk += "# AS defines\nAS_DEFS +=\n"
-        text_mk += "# ASM sources\nASM_SOURCES +=\n"
-        text_mk += "# link flags\nLDFLAGS += -u_printf_float\n"
-        with open(default_mk, "wb") as f:
-            f.write(text_mk.encode("UTF-8"))
+    if user not in os.listdir():
+        text_user = "# C defines\n"
+        for flag in sorted({i for j in args[0].W for i in j}):
+            text_user += "C_DEFS += -W{}\n".format(flag)
+        text_user += "# C includes\nC_INCLUDES +=\n"
+        text_user += "# C sources\nC_SOURCES += $(wildcard *.c)\n"
+        text_user += "# AS defines\nAS_DEFS +=\n"
+        text_user += "# ASM sources\nASM_SOURCES +=\n"
+        text_user += "# link flags\nLDFLAGS += -u_printf_float\n"
+        with open(user, "wb") as f:
+            f.write(text_user.encode("UTF-8"))
 
     with open(filename, "r", encoding="UTF-8") as f:
         text = f.read()
 
     # Set inlcude user' Makefile
-    if default_mk not in text:
-        text_inc = "-include {}\n".format(default_mk)
+    if user not in text:
+        text_inc = "-include {}\n".format(user)
         text_src = "# default "
         text = text.replace(text_src, "{}\n{}".format(text_inc, text_src))
-        del text_src
 
     # Deal with the end
     end = "EOF"
@@ -221,25 +178,10 @@ def makefile(filename="Makefile"):
     with open(filename, "wb") as f:
         f.write(text.encode("UTF-8"))
 
-    return
-
-
-def vscinit():
-    '''
-    initialze .vscode
-    '''
-
-    if not os.path.exists(dst):
-        os.mkdir(dst)
-
-    return
-
 
 if "__main__" == __name__:
-    vscinit()
+    if not os.path.exists(tgt):
+        os.mkdir(tgt)
     c_cpp_properties()
-    launch()
+    make(config=launch())
     tasks()
-    makefile()
-    # Show log
-    print("config:", config)

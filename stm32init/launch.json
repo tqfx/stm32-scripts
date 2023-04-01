@@ -3,12 +3,14 @@
     "configurations": [
         {
             "cwd": "${workspaceRoot}",
-            "executable": "build/ELFNAME.elf",
+            "executable": "build/*.elf",
             "name": "Debug",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
-            "configFiles": ["openocd.cfg"],
+            "configFiles": [
+                "openocd.cfg"
+            ],
             "preLaunchTask": "Build",
             "postDebugTask": "Reset"
         }

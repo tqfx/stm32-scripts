@@ -7,8 +7,7 @@
             ],
             "defines": [
                 "USE_FULL_LL_DRIVER",
-                "USE_HAL_DRIVER",
-                "STM32MCU"
+                "USE_HAL_DRIVER"
             ],
             "cStandard": "gnu11",
             "cppStandard": "gnu++11",
